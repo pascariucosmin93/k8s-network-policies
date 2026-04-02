@@ -90,7 +90,7 @@ Already applied in cluster:
 - `immich`
 - `gaz`
 - `monitoring` (`ingress` + targeted `egress` for `grafana`, `alloy`, and `prometheus-server`)
-- `argocd` (`ingress` + targeted `egress` for `argocd-server`)
+- `argocd` (`ingress` hardening + targeted `egress` for `argocd-repo-server`; `argocd-server` egress hardening was rolled back after breaking application details in the UI`)
 - `forgejo` (`ingress-only`)
 
 Validated after apply:
@@ -106,7 +106,7 @@ Validated after apply:
 - `forgejo` VIP `10.30.10.85:3000` returned `200` from inside the cluster
 
 Still pending:
-- `argocd` `repo-server` / controller egress audit
+- `argocd` application-controller / secondary controllers egress audit
 - `forgejo` egress audit
 
 Reason these remain partial:
