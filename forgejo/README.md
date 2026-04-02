@@ -1,15 +1,21 @@
 # Forgejo Policies
 
-Status: ingress-only hardening planned.
+Status: ingress-only hardening applied.
 
-Reason:
-- CI runners usually require broad and variable outbound access
-- this namespace needs a dedicated egress audit before enforcement
-- safe first step is ingress-only hardening
+Applied in cluster:
+- `00-default-deny-ingress.yaml`
+- `01-allow-public-web-and-ssh-ingress.yaml`
 
-Planned next step:
-- apply `default-deny-ingress`
-- allow public web and SSH ingress to Forgejo itself
-- separate Forgejo core traffic from runner traffic
-- document SSH / HTTP ingress requirements
-- restrict runner egress incrementally after validating jobs
+What is enforced:
+- all pods in `forgejo` are ingress-denied by default
+- Forgejo keeps public web ingress on pod port `3000`
+- Forgejo keeps public SSH ingress on pod port `22` at the service layer
+
+Validation performed:
+- Forgejo VIP `10.30.10.85:3000` returned `200` from inside the cluster
+- service still maps `22 -> 2222` and `3000 -> 3000`
+
+Still pending:
+- Forgejo core egress audit
+- runner separation review
+- runner egress restriction plan

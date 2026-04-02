@@ -89,6 +89,9 @@ Already applied in cluster:
 - `todo-app`
 - `immich`
 - `gaz`
+- `monitoring` (`ingress-only`)
+- `argocd` (`ingress-only`)
+- `forgejo` (`ingress-only`)
 
 Validated after apply:
 - `cv` VIP `10.30.10.3` returned `200`
@@ -97,13 +100,17 @@ Validated after apply:
 - `immich` VIP `10.30.10.7` returned `200`
 - `gaz` VIP `10.30.10.6` returned `200`
 - `gaz` gateway VIP `10.30.10.8` returned `200`
+- `monitoring` Grafana VIP `10.40.10.60:3000` returned `302` from inside the cluster
+- `monitoring` Prometheus VIP `10.30.10.5` returned `302` from inside the cluster
+- `argocd` VIP `10.40.10.52` returned `307` from inside the cluster
+- `forgejo` VIP `10.30.10.85:3000` returned `200` from inside the cluster
 
-Not applied yet:
-- `monitoring`
-- `argocd`
-- `forgejo`
+Still pending:
+- `monitoring` egress audit
+- `argocd` egress audit
+- `forgejo` egress audit
 
-Reason these are still pending:
+Reason these remain partial:
 - they have more sensitive or variable outbound dependencies
 - a blind `default-deny-egress` would carry a higher outage risk
 
@@ -116,6 +123,7 @@ Do not start in `kube-system`.
 ### Rule 2
 
 Do not start with egress-heavy namespaces like `argocd`, `forgejo`, or `monitoring`.
+For these namespaces, apply ingress-only hardening first.
 
 ### Rule 3
 
