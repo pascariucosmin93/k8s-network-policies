@@ -91,7 +91,7 @@ Already applied in cluster:
 - `gaz`
 - `monitoring` (`ingress` + targeted `egress` for `grafana`, `alloy`, and `prometheus-server`)
 - `argocd` (`ingress` hardening + targeted `egress` for `argocd-repo-server`; `argocd-server` egress hardening was rolled back after breaking application details in the UI`)
-- `forgejo` (`ingress-only`)
+- `forgejo` (`ingress` hardening + targeted `egress` for DNS and PostgreSQL`)
 
 Validated after apply:
 - `cv` VIP `10.30.10.3` returned `200`
