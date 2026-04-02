@@ -92,6 +92,7 @@ Already applied in cluster:
 - `monitoring` (`ingress` + targeted `egress` for `grafana`, `alloy`, and `prometheus-server`)
 - `argocd` (`ingress` hardening + targeted `egress` for `argocd-repo-server`; `argocd-server` egress hardening was rolled back after breaking application details in the UI`)
 - `forgejo` (`ingress` hardening + targeted `egress` for DNS and PostgreSQL`)
+- `forgejo-runner` (`ingress` hardening only; runner `egress` remains open by design for CI jobs`)
 
 Validated after apply:
 - `cv` VIP `10.30.10.3` returned `200`
@@ -107,7 +108,7 @@ Validated after apply:
 
 Still pending:
 - `argocd` application-controller / secondary controllers egress audit
-- `forgejo` egress audit
+- `forgejo-runner` egress profiling and possible runner-class separation
 
 Reason these remain partial:
 - they have more sensitive or variable outbound dependencies
@@ -137,6 +138,7 @@ Recommended order:
 6. `monitoring`
 7. `argocd`
 8. `forgejo`
+9. `forgejo-runner`
 
 ## Baseline Policy Model
 
