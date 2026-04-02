@@ -1,0 +1,25 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-prometheus-node-scrape-egress
+  namespace: monitoring
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/component: server
+      app.kubernetes.io/instance: prometheus
+      app.kubernetes.io/name: prometheus
+  egress:
+    - toEntities:
+        - remote-node
+        - host
+      toPorts:
+        - ports:
+            - port: "9100"
+              protocol: TCP
+            - port: "9962"
+              protocol: TCP
+            - port: "9964"
+              protocol: TCP
+            - port: "9965"
+              protocol: TCP
