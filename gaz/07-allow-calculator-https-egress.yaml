@@ -1,0 +1,15 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-calculator-https-egress
+  namespace: gaz
+spec:
+  podSelector:
+    matchLabels:
+      app: calculatorgaz
+  policyTypes:
+  - Egress
+  egress:
+  - ports:
+    - protocol: TCP
+      port: 443

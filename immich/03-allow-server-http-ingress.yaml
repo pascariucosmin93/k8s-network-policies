@@ -1,0 +1,15 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-server-http-ingress
+  namespace: immich
+spec:
+  podSelector:
+    matchLabels:
+      app: immich-server
+  policyTypes:
+  - Ingress
+  ingress:
+  - ports:
+    - protocol: TCP
+      port: 2283

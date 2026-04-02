@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend-to-backend
+  namespace: todo-app
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: backend
+      app.kubernetes.io/instance: todo
+      app.kubernetes.io/name: todolist
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/component: frontend
+          app.kubernetes.io/instance: todo
+          app.kubernetes.io/name: todolist
+    ports:
+    - protocol: TCP
+      port: 8000
