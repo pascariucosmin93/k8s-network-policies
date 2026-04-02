@@ -89,8 +89,8 @@ Already applied in cluster:
 - `todo-app`
 - `immich`
 - `gaz`
-- `monitoring` (`ingress-only`)
-- `argocd` (`ingress-only`)
+- `monitoring` (`ingress` + targeted `egress` for `grafana`, `alloy`, and `prometheus-server`)
+- `argocd` (`ingress` + targeted `egress` for `argocd-server`)
 - `forgejo` (`ingress-only`)
 
 Validated after apply:
@@ -106,8 +106,7 @@ Validated after apply:
 - `forgejo` VIP `10.30.10.85:3000` returned `200` from inside the cluster
 
 Still pending:
-- `monitoring` egress audit
-- `argocd` egress audit
+- `argocd` `repo-server` / controller egress audit
 - `forgejo` egress audit
 
 Reason these remain partial:
