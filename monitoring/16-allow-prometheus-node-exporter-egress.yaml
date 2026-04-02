@@ -18,3 +18,9 @@ spec:
     ports:
     - protocol: TCP
       port: 9100
+    - protocol: TCP
+      port: 9962
+    - protocol: TCP
+      port: 9964
+    - protocol: TCP
+      port: 9965
