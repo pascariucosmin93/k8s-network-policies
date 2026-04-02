@@ -81,6 +81,32 @@ Excluded:
 - native routing / tunnel redesign
 - `exportPodCIDR` changes
 
+## Rollout Status
+
+Already applied in cluster:
+- `cv`
+- `employee-leave`
+- `todo-app`
+- `immich`
+- `gaz`
+
+Validated after apply:
+- `cv` VIP `10.30.10.3` returned `200`
+- `employee-leave` VIP `10.30.10.9` returned `200`
+- `todo-app` VIP `10.30.10.10` returned `200`
+- `immich` VIP `10.30.10.7` returned `200`
+- `gaz` VIP `10.30.10.6` returned `200`
+- `gaz` gateway VIP `10.30.10.8` returned `200`
+
+Not applied yet:
+- `monitoring`
+- `argocd`
+- `forgejo`
+
+Reason these are still pending:
+- they have more sensitive or variable outbound dependencies
+- a blind `default-deny-egress` would carry a higher outage risk
+
 ## Rollout Strategy
 
 ### Rule 1
@@ -274,6 +300,13 @@ Each namespace folder should eventually contain:
 - DNS allow policy
 - namespace-specific allow rules
 - short notes about expected traffic
+
+## Current Implementation Notes
+
+- `cv` currently keeps public ingress open on HTTP because it is exposed directly through its own `LoadBalancer` service
+- `employee-leave` and `todo-app` use frontend/backend separation with explicit frontend -> backend allowance
+- `immich` allows only server -> postgres and server -> redis internally
+- `gaz` currently keeps same-namespace service traffic open while restricting namespace boundaries and preserving gateway/backend traffic
 
 ## Recommendation
 
