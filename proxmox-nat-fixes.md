@@ -1,21 +1,21 @@
 # Proxmox NAT Fixes (2026-04-03)
 
-## Problema
+## Problem
 
-Doua subnet-uri nu aveau acces la internet din cauza unor reguli SNAT lipsa sau gresite pe Proxmox (10.90.90.13 / 10.13.13.1).
+Two subnets did not have internet access because of missing or incorrect SNAT rules on Proxmox (10.90.90.13 / 10.13.13.1).
 
 ---
 
-## 1. 10.13.13.0/24 — Regula SNAT lipsea complet
+## 1. 10.13.13.0/24 - SNAT rule was completely missing
 
-**Simptom:** VM-urile din subnet-ul 10.13.13.x ajungeau la gateway (10.13.13.1) dar pachetele ieseau spre internet cu IP sursa privat, fara NAT.
+**Symptom:** VMs in subnet 10.13.13.x could reach the gateway (10.13.13.1), but packets were leaving to the internet with private source IPs, without NAT.
 
-**Fix aplicat (runtime):**
+**Applied fix (runtime):**
 ```bash
 iptables -t nat -A POSTROUTING -s 10.13.13.0/24 -o vmbr0 -j SNAT --to-source 10.90.90.13
 ```
 
-**Fix persistent** — adauga in `/etc/network/interfaces` la sectiunea `vmbr0`:
+**Persistent fix** - add this to `/etc/network/interfaces` in the `vmbr0` section:
 ```
 post-up   iptables -t nat -A POSTROUTING -s 10.13.13.0/24 -o vmbr0 -j SNAT --to-source 10.90.90.13
 post-down iptables -t nat -D POSTROUTING -s 10.13.13.0/24 -o vmbr0 -j SNAT --to-source 10.90.90.13
@@ -23,20 +23,20 @@ post-down iptables -t nat -D POSTROUTING -s 10.13.13.0/24 -o vmbr0 -j SNAT --to-
 
 ---
 
-## 2. 192.168.70.0/24 — Regula SNAT cu IP inexistent
+## 2. 192.168.70.0/24 - SNAT rule with non-existent IP
 
-**Simptom:** Exista o regula SNAT pentru 192.168.70.0/24 dar facea SNAT spre `10.88.88.230` — un IP care nu mai era configurat pe nicio interfata a Proxmox-ului.
+**Symptom:** There was an SNAT rule for 192.168.70.0/24, but it was translating to `10.88.88.230` - an IP that was no longer configured on any Proxmox interface.
 
-**Fix aplicat (runtime):**
+**Applied fix (runtime):**
 ```bash
-# Sterge regula stricata
+# Remove broken rule
 iptables -t nat -D POSTROUTING -s 192.168.70.0/24 -o vmbr0 -j SNAT --to-source 10.88.88.230
 
-# Adauga regula corecta
+# Add correct rule
 iptables -t nat -A POSTROUTING -s 192.168.70.0/24 -o vmbr0 -j SNAT --to-source 10.90.90.13
 ```
 
-**Fix persistent** — adauga in `/etc/network/interfaces` la sectiunea `vmbr0`:
+**Persistent fix** - add this to `/etc/network/interfaces` in the `vmbr0` section:
 ```
 post-up   iptables -t nat -A POSTROUTING -s 192.168.70.0/24 -o vmbr0 -j SNAT --to-source 10.90.90.13
 post-down iptables -t nat -D POSTROUTING -s 192.168.70.0/24 -o vmbr0 -j SNAT --to-source 10.90.90.13
@@ -44,39 +44,39 @@ post-down iptables -t nat -D POSTROUTING -s 192.168.70.0/24 -o vmbr0 -j SNAT --t
 
 ---
 
-## Starea actuala a regulilor NAT (POSTROUTING)
+## Current state of NAT rules (POSTROUTING)
 
-| # | Subnet sursa     | Interfata | SNAT target    | Status       |
+| # | Source subnet    | Interface | SNAT target    | Status       |
 |---|-----------------|-----------|----------------|--------------|
-| 1 | 20.1.1.0/24     | vmbr0     | 10.88.88.230   | ⚠️ IP inexistent |
-| 2 | 20.1.1.0/24     | vmbr0     | 10.90.90.13    | ✓ OK (duplicat) |
-| 3 | 192.168.70.0/24 | vmbr0     | 10.90.90.13    | ✓ OK (activa) |
-| 8 | 10.13.13.0/24   | vmbr0     | 10.90.90.13    | ✓ OK (adaugata azi) |
+| 1 | 20.1.1.0/24     | vmbr0     | 10.88.88.230   | WARNING: non-existent IP |
+| 2 | 20.1.1.0/24     | vmbr0     | 10.90.90.13    | OK (duplicate) |
+| 3 | 192.168.70.0/24 | vmbr0     | 10.90.90.13    | OK (active) |
+| 8 | 10.13.13.0/24   | vmbr0     | 10.90.90.13    | OK (added today) |
 
-> ⚠️ Regulile cu `10.88.88.230` si duplicatele pentru `20.1.1.0/24` ar trebui curatate.
+> WARNING: Rules with `10.88.88.230` and duplicate entries for `20.1.1.0/24` should be cleaned up.
 
 ---
 
-## Curatare reguli redundante (optional)
+## Cleanup of redundant rules (optional)
 
 ```bash
-# Sterge toate regulile vechi cu IP inexistent sau duplicate
+# Remove all old rules with non-existent IPs or duplicates
 iptables -t nat -D POSTROUTING -s 20.1.1.0/24 -o vmbr0 -j SNAT --to-source 10.88.88.230
 iptables -t nat -D POSTROUTING -s 20.1.1.0/24 -o vmbr0 -j SNAT --to-source 10.90.90.13
 iptables -t nat -D POSTROUTING -s 20.1.1.0/24 -o vmbr0 -j SNAT --to-source 10.90.90.13
 iptables -t nat -D POSTROUTING -s 192.168.70.0/24 -o vmbr0 -j SNAT --to-source 10.90.90.13
 iptables -t nat -D POSTROUTING -s 192.168.70.0/24 -o vmbr0 -j SNAT --to-source 10.90.90.13
 
-# Pastreaza doar regulile necesare
+# Keep only required rules
 iptables -t nat -A POSTROUTING -s 192.168.70.0/24 -o vmbr0 -j SNAT --to-source 10.90.90.13
 iptables -t nat -A POSTROUTING -s 10.13.13.0/24   -o vmbr0 -j SNAT --to-source 10.90.90.13
 ```
 
 ---
 
-## Note arhitectura
+## Architecture notes
 
-- `vmbr0` (10.90.90.13/24) — bridge spre internet, default gateway via 10.90.90.1
-- `vmbr1` (10.20.20.230/24) — bridge intern
-- `vnet1` (10.13.13.1/24) — retea management VM-uri
-- `vnet2` (192.168.70.2/24) — retea interna cluster Kubernetes
+- `vmbr0` (10.90.90.13/24) - internet-facing bridge, default gateway via 10.90.90.1
+- `vmbr1` (10.20.20.230/24) - internal bridge
+- `vnet1` (10.13.13.1/24) - VM management network
+- `vnet2` (192.168.70.2/24) - internal Kubernetes cluster network

@@ -20,9 +20,9 @@ Validation performed:
 
 Audited outbound dependencies:
 - `grafana` -> `prometheus-server.monitoring.svc.cluster.local:80`
-- `grafana` -> `10.13.13.30:3100` for Loki
+- `grafana` -> `10.90.90.32:3100` for Loki
 - `alloy` -> `10.96.0.1:443` for Kubernetes API discovery
-- `alloy` -> `10.13.13.30:3100` for Loki writes
+- `alloy` -> `10.90.90.32:3100` for Loki writes
 - `prometheus-server` -> `10.96.0.1:443` for Kubernetes API
 - `prometheus-server` -> pod CIDR `10.244.0.0/16` for pod and endpoint scrapes
 - `prometheus-server` -> node IPs `192.168.70.0/24` for node-exporter

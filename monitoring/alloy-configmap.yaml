@@ -1,0 +1,100 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/component: config
+    app.kubernetes.io/instance: alloy
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: alloy
+data:
+  config.alloy: |
+    discovery.kubernetes "pods" {
+      role = "pod"
+    }
+
+    discovery.relabel "pods" {
+      targets = discovery.kubernetes.pods.targets
+      rule {
+        source_labels = ["__meta_kubernetes_pod_controller_name"]
+        regex = "([0-9a-z-.]+?)(-[0-9a-f]{8,10})?"
+        action = "replace"
+        target_label = "__tmp_controller_name"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name", "__meta_kubernetes_pod_label_app", "__tmp_controller_name", "__meta_kubernetes_pod_name"]
+        regex = "^;*([^;]+)(;.*)?"
+        action = "replace"
+        target_label = "app"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_node_name"]
+        target_label = "node_name"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_namespace"]
+        target_label = "namespace"
+      }
+      rule {
+        source_labels = ["namespace", "app"]
+        separator = "/"
+        target_label = "job"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_name"]
+        target_label = "pod"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_container_name"]
+        target_label = "container"
+      }
+      rule {
+        source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+        separator = "/"
+        replacement = "/var/log/pods/*$1/*.log"
+        target_label = "__path__"
+      }
+    }
+
+    loki.source.kubernetes "pods" {
+      targets    = discovery.relabel.pods.output
+      forward_to = [loki.process.parse_json.receiver]
+    }
+
+    loki.process "parse_json" {
+      stage.json {
+        expressions = {
+          ip      = "ip",
+          country = "country",
+          status  = "status",
+          method  = "method",
+        }
+      }
+      stage.labels {
+        values = {
+          ip      = "",
+          country = "",
+        }
+      }
+      forward_to = [loki.write.loki.receiver]
+    }
+
+    local.file_match "hubble" {
+      path_targets = [{
+        __path__ = "/var/run/cilium/hubble/events.log",
+        job      = "hubble-flows",
+      }]
+    }
+
+    loki.source.file "hubble" {
+      targets    = local.file_match.hubble.targets
+      forward_to = [loki.write.loki.receiver]
+    }
+
+    loki.write "loki" {
+      endpoint {
+        url            = "http://10.90.90.32:3100/loki/api/v1/push"
+        remote_timeout = "30s"
+      }
+    }
