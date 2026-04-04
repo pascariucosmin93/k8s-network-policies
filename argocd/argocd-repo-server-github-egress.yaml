@@ -1,0 +1,97 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: argocd-repo-server-github-egress
+  namespace: argocd
+spec:
+  endpointSelector:
+    matchLabels:
+      k8s:app.kubernetes.io/name: argocd-repo-server
+      k8s:io.kubernetes.pod.namespace: argocd
+  ingress:
+  - fromEndpoints:
+    - matchLabels:
+        k8s:app.kubernetes.io/name: argocd-application-controller
+        k8s:io.kubernetes.pod.namespace: argocd
+    toPorts:
+    - ports:
+      - port: "8081"
+        protocol: TCP
+  - fromEndpoints:
+    - matchLabels:
+        k8s:app.kubernetes.io/name: argocd-server
+        k8s:io.kubernetes.pod.namespace: argocd
+    toPorts:
+    - ports:
+      - port: "8081"
+        protocol: TCP
+  - fromEndpoints:
+    - matchLabels:
+        k8s:app.kubernetes.io/name: argocd-notifications-controller
+        k8s:io.kubernetes.pod.namespace: argocd
+    toPorts:
+    - ports:
+      - port: "8081"
+        protocol: TCP
+  - fromEndpoints:
+    - matchLabels:
+        k8s:app.kubernetes.io/name: argocd-applicationset-controller
+        k8s:io.kubernetes.pod.namespace: argocd
+    toPorts:
+    - ports:
+      - port: "8081"
+        protocol: TCP
+  - fromEndpoints:
+    - matchLabels:
+        k8s:io.kubernetes.pod.namespace: monitoring
+    toPorts:
+    - ports:
+      - port: "8084"
+        protocol: TCP
+  egress:
+  - toEndpoints:
+    - matchLabels:
+        k8s:io.kubernetes.pod.namespace: kube-system
+        k8s:k8s-app: kube-dns
+    toPorts:
+    - ports:
+      - port: "53"
+        protocol: UDP
+      - port: "53"
+        protocol: TCP
+      rules:
+        dns:
+        - matchPattern: "*"
+  - toEndpoints:
+    - matchLabels:
+        k8s:app.kubernetes.io/name: argocd-redis
+        k8s:io.kubernetes.pod.namespace: argocd
+    toPorts:
+    - ports:
+      - port: "6379"
+        protocol: TCP
+  - toFQDNs:
+    - matchName: github.com
+    - matchPattern: "*.github.com"
+    - matchName: raw.githubusercontent.com
+    - matchPattern: "*.githubusercontent.com"
+    toPorts:
+    - ports:
+      - port: "443"
+        protocol: TCP
+  - toEndpoints:
+    - matchLabels:
+        k8s:app.kubernetes.io/name: argocd-application-controller
+        k8s:io.kubernetes.pod.namespace: argocd
+    toPorts:
+    - ports:
+      - port: "8082"
+        protocol: TCP
+  - toEndpoints:
+    - matchLabels:
+        k8s:app.kubernetes.io/name: argocd-server
+        k8s:io.kubernetes.pod.namespace: argocd
+    toPorts:
+    - ports:
+      - port: "8081"
+        protocol: TCP
