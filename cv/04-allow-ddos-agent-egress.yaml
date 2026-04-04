@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-ddos-agent-egress
+  namespace: cv
+spec:
+  podSelector:
+    matchLabels:
+      app: cv-website
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: ddos-protection
+      podSelector:
+        matchLabels:
+          app: ddos-agent
+    ports:
+    - protocol: TCP
+      port: 8080
