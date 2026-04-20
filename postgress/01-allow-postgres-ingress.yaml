@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-postgres-ingress
+  namespace: postgress
+spec:
+  podSelector:
+    matchLabels:
+      app: postgres
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: jobs-platform
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: gaz
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: todo-app
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: default
+    ports:
+    - port: 5432
+      protocol: TCP
