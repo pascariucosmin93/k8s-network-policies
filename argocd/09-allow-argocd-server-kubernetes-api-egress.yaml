@@ -10,15 +10,9 @@ spec:
   policyTypes:
   - Egress
   egress:
-  - to:
-    - ipBlock:
-        cidr: 10.96.0.1/32
-    ports:
+  - ports:
     - protocol: TCP
       port: 443
-  - to:
-    - ipBlock:
-        cidr: 192.168.70.20/32
-    ports:
+  - ports:
     - protocol: TCP
       port: 6443
