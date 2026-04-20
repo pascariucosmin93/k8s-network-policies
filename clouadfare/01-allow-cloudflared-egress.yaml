@@ -13,11 +13,27 @@ spec:
   - ports:
     - port: 53
       protocol: UDP
+  - ports:
     - port: 53
       protocol: TCP
+  - ports:
     - port: 443
       protocol: TCP
+  - ports:
     - port: 7844
       protocol: TCP
+  - ports:
     - port: 7844
       protocol: UDP
+  - ports:
+    - port: 80
+      protocol: TCP
+  - ports:
+    - port: 2283
+      protocol: TCP
+  - ports:
+    - port: 3000
+      protocol: TCP
+  - ports:
+    - port: 8080
+      protocol: TCP
