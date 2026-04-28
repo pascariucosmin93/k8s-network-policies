@@ -2,6 +2,8 @@
 
 Production-ready GitOps repository for Kubernetes network security using Cilium and Argo CD.
 
+The repository already uses namespace overlays, Cilium L7 policies where they add value, and an Argo CD `ApplicationSet`. The remaining operational risk is not missing features so much as applying the wrong module in the wrong namespace or assuming an optional baseline is already active when it is not.
+
 ## Audit Findings
 
 The previous repository was closer to a demo than a safe production baseline. The main issues were:
@@ -21,7 +23,8 @@ The previous repository was closer to a demo than a safe production baseline. Th
 .
 ├── argocd
 │   ├── application.yaml
-│   └── applicationset.yaml
+│   ├── applicationset.yaml
+│   └── kustomization.yaml
 └── network-policies
     ├── apps
     │   ├── gaz
@@ -52,13 +55,15 @@ The previous repository was closer to a demo than a safe production baseline. Th
 ## Baseline Policy Model
 
 - `deny-all.yaml`
-  Zero-trust baseline. Nothing talks until explicitly allowed.
+  Zero-trust baseline. `podSelector: {}` is intentional and applies the deny policy to the whole namespace.
 - `allow-dns.yaml`
   Shared DNS egress to CoreDNS or kube-dns on TCP/UDP 53.
 - `allow-kube-api.yaml`
-  Reusable Cilium policy for workloads that must call the Kubernetes API. Keep this opt-in unless a namespace is controller-heavy.
+  Reusable Cilium policy for namespaces where broad kube-apiserver access is acceptable. Keep this opt-in unless a namespace is controller-heavy.
 - `allow-internal-namespace.yaml`
   Optional namespaced east-west allow for legacy or tightly-coupled workloads. Do not enable it by default for sensitive apps.
+
+Only `deny-all.yaml` and `allow-dns.yaml` are part of the shared baseline today. `allow-kube-api.yaml` and `allow-internal-namespace.yaml` exist as explicit opt-in modules and are not enabled implicitly by the base `kustomization.yaml`.
 
 ## App Policy Model
 
@@ -68,6 +73,8 @@ The previous repository was closer to a demo than a safe production baseline. Th
   Demonstrates platform namespace controls with ingress to Grafana only from the ingress path, Grafana to Loki on L7 HTTP, and explicit kube-apiserver access only for Prometheus and Alloy.
 
 ## Argo CD Adoption
+
+The bootstrap `Application` now points at `argocd/`, where a dedicated `kustomization.yaml` renders only the fleet `ApplicationSet`. This keeps the initial Argo apply small and avoids using a single namespace overlay as the bootstrap unit.
 
 The bootstrap `Application` and the fleet `ApplicationSet` intentionally use:
 
