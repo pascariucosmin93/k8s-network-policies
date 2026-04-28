@@ -57,7 +57,7 @@ The previous repository was closer to a demo than a safe production baseline. Th
 - `deny-all.yaml`
   Zero-trust baseline. `podSelector: {}` is intentional and applies the deny policy to the whole namespace.
 - `allow-dns.yaml`
-  Shared DNS egress to CoreDNS or kube-dns on TCP/UDP 53.
+  Shared DNS egress to CoreDNS or kube-dns on TCP/UDP 53, limited to cluster-local service discovery.
 - `allow-kube-api.yaml`
   Reusable Cilium policy for namespaces where broad kube-apiserver access is acceptable. Keep this opt-in unless a namespace is controller-heavy.
 - `allow-internal-namespace.yaml`
@@ -65,10 +65,12 @@ The previous repository was closer to a demo than a safe production baseline. Th
 
 Only `deny-all.yaml` and `allow-dns.yaml` are part of the shared baseline today. `allow-kube-api.yaml` and `allow-internal-namespace.yaml` exist as explicit opt-in modules and are not enabled implicitly by the base `kustomization.yaml`.
 
+The DNS baseline is intentionally not a wildcard anymore. External name resolution should be granted only in app-specific policies next to the workload that needs internet egress. In this repo, `billing-service` in `gaz` is the example pattern.
+
 ## App Policy Model
 
 - `apps/gaz/policy.yaml`
-  Demonstrates zero-trust app isolation with explicit gateway ingress, explicit service-to-service egress, database-only access for the calculator, and partner API egress restricted by DNS name and port.
+  Demonstrates zero-trust app isolation with explicit gateway ingress, explicit service-to-service egress, database-only access for the calculator, and partner API egress restricted by DNS name, TLS SNI, and port.
 - `apps/monitoring/policy.yaml`
   Demonstrates platform namespace controls with ingress to Grafana only from the ingress path, Grafana to Loki on L7 HTTP, and explicit kube-apiserver access only for Prometheus and Alloy.
 

@@ -173,6 +173,41 @@ spec:
       app.kubernetes.io/name: billing-service
       io.cilium.k8s.policy.serviceaccount: billing-service
   egress:
+    - toEndpoints:
+        - matchExpressions:
+            - key: k8s:io.kubernetes.pod.namespace
+              operator: In
+              values:
+                - kube-system
+            - key: k8s:k8s-app
+              operator: In
+              values:
+                - kube-dns
+                - coredns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+          rules:
+            dns:
+              - matchName: api.partner.example.com
+              - matchName: oauth.partner.example.com
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:app.kubernetes.io/name: coredns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+          rules:
+            dns:
+              - matchName: api.partner.example.com
+              - matchName: oauth.partner.example.com
     - toFQDNs:
         - matchName: api.partner.example.com
         - matchName: oauth.partner.example.com
@@ -180,6 +215,9 @@ spec:
         - ports:
             - port: "443"
               protocol: TCP
+          serverNames:
+            - api.partner.example.com
+            - oauth.partner.example.com
 ---
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy

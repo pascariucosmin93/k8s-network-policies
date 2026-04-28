@@ -28,7 +28,9 @@ spec:
               protocol: TCP
           rules:
             dns:
-              - matchPattern: "*"
+              - matchPattern: "*.svc.cluster.local"
+              - matchPattern: "*.cluster.local"
+              - matchPattern: "*.svc"
     - toEndpoints:
         - matchLabels:
             k8s:io.kubernetes.pod.namespace: kube-system
@@ -41,4 +43,6 @@ spec:
               protocol: TCP
           rules:
             dns:
-              - matchPattern: "*"
+              - matchPattern: "*.svc.cluster.local"
+              - matchPattern: "*.cluster.local"
+              - matchPattern: "*.svc"
