@@ -3,6 +3,8 @@ kind: ApplicationSet
 metadata:
   name: network-policies
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
   labels:
     app.kubernetes.io/name: network-policies
     app.kubernetes.io/part-of: network-policies
@@ -13,15 +15,18 @@ spec:
         repoURL: https://github.com/pascariucosmin93/k8s-network-policies.git
         revision: HEAD
         directories:
-          - path: network-policies/envs/*/*
+          - path: network-policies/envs/dev/*
+          - path: network-policies/envs/prod/*
   template:
     metadata:
       name: 'netpol-{{ index .path.segments 2 }}-{{ index .path.segments 3 }}'
+      annotations:
+        argocd.argoproj.io/sync-wave: "1"
       labels:
         app.kubernetes.io/part-of: network-policies
         app.kubernetes.io/name: 'netpol-{{ index .path.segments 2 }}-{{ index .path.segments 3 }}'
         env: '{{ index .path.segments 2 }}'
-        namespace: '{{ index .path.segments 3 }}'
+        namespace: '{{ index .path.segments 3 }}-{{ index .path.segments 2 }}'
     spec:
       project: default
       source:
@@ -30,7 +35,7 @@ spec:
         path: '{{ .path.path }}'
       destination:
         server: https://kubernetes.default.svc
-        namespace: '{{ index .path.segments 3 }}'
+        namespace: '{{ index .path.segments 3 }}-{{ index .path.segments 2 }}'
       syncPolicy:
         automated:
           prune: false

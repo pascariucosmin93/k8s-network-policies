@@ -2,7 +2,7 @@
 
 Production-ready GitOps repository for Kubernetes network security using Cilium and Argo CD.
 
-The repository already uses namespace overlays, Cilium L7 policies where they add value, and an Argo CD `ApplicationSet`. The remaining operational risk is not missing features so much as applying the wrong module in the wrong namespace or assuming an optional baseline is already active when it is not.
+The repository uses namespace overlays, Cilium L7 policies where they add value, and an Argo CD bootstrap that separates baseline ownership from application-specific ownership.
 
 ## Audit Findings
 
@@ -24,6 +24,7 @@ The previous repository was closer to a demo than a safe production baseline. Th
 ├── argocd
 │   ├── application.yaml
 │   ├── applicationset.yaml
+│   ├── base-application.yaml
 │   └── kustomization.yaml
 └── network-policies
     ├── apps
@@ -38,6 +39,14 @@ The previous repository was closer to a demo than a safe production baseline. Th
     │   ├── allow-internal-namespace.yaml
     │   ├── allow-kube-api.yaml
     │   ├── deny-all.yaml
+    │   ├── envs
+    │   │   ├── dev
+    │   │   │   ├── gaz
+    │   │   │   └── monitoring
+    │   │   ├── kustomization.yaml
+    │   │   └── prod
+    │   │       ├── gaz
+    │   │       └── monitoring
     │   └── kustomization.yaml
     └── envs
         ├── dev
@@ -63,7 +72,7 @@ The previous repository was closer to a demo than a safe production baseline. Th
 - `allow-internal-namespace.yaml`
   Optional namespaced east-west allow for legacy or tightly-coupled workloads. Do not enable it by default for sensitive apps.
 
-Only `deny-all.yaml` and `allow-dns.yaml` are part of the shared baseline today. `allow-kube-api.yaml` and `allow-internal-namespace.yaml` exist as explicit opt-in modules and are not enabled implicitly by the base `kustomization.yaml`.
+Only `deny-all.yaml` and `allow-dns.yaml` are part of the default baseline rollout today. `allow-kube-api.yaml` and `allow-internal-namespace.yaml` exist as explicit opt-in modules and are not enabled implicitly.
 
 The DNS baseline is intentionally not a wildcard anymore. External name resolution should be granted only in app-specific policies next to the workload that needs internet egress. In this repo, `billing-service` in `gaz` is the example pattern.
 
@@ -74,11 +83,20 @@ The DNS baseline is intentionally not a wildcard anymore. External name resoluti
 - `apps/monitoring/policy.yaml`
   Demonstrates platform namespace controls with ingress to Grafana only from the ingress path, Grafana to Loki on L7 HTTP, and explicit kube-apiserver access only for Prometheus and Alloy.
 
-## Argo CD Adoption
+## Argo CD Ownership Model
 
-The bootstrap `Application` now points at `argocd/`, where a dedicated `kustomization.yaml` renders only the fleet `ApplicationSet`. This keeps the initial Argo apply small and avoids using a single namespace overlay as the bootstrap unit.
+The bootstrap `Application` points at `argocd/`, where a dedicated `kustomization.yaml` renders:
 
-The bootstrap `Application` and the fleet `ApplicationSet` intentionally use:
+- one `Application` for the shared baseline rollout under `network-policies/base/envs`,
+- one `ApplicationSet` for app-specific overlays under `network-policies/envs/dev/*` and `network-policies/envs/prod/*`.
+
+This prevents `SharedResourceWarning` by ensuring:
+
+- the base app owns `Namespace`, `deny-all`, and `allow-dns`,
+- each generated app owns only its namespace-specific application policies,
+- dev and prod no longer deploy into the same namespace.
+
+The bootstrap `Application`, the base `Application`, and the fleet `ApplicationSet` intentionally use:
 
 - `automated.selfHeal: true`
 - `automated.prune: false`

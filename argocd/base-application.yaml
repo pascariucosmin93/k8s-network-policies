@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: network-policies-base
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+  labels:
+    app.kubernetes.io/name: network-policies-base
+    app.kubernetes.io/part-of: network-policies
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/pascariucosmin93/k8s-network-policies.git
+    targetRevision: HEAD
+    path: network-policies/base/envs
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - ApplyOutOfSyncOnly=true
+      - PruneLast=true
+      - ServerSideApply=true
