@@ -1,33 +1,21 @@
 # k8s-network-policies
 
-Production-ready GitOps repository for Kubernetes network policies on clusters running Cilium and managed with Argo CD. The current layout is optimized for higher-scale microservice environments where policy count, Envoy/L7 overhead, and GitOps reconciliation cost matter.
+Production-ready GitOps repository for Kubernetes network security using Cilium and Argo CD.
 
-## What Was Wrong In The Original Repo
+## Audit Findings
 
-- The repository was organized as flat namespace folders, which made promotion across environments difficult and encouraged copy/paste drift.
-- Several policies allowed traffic by port only, without restricting destinations. Examples included public ingress on app ports and `443` egress with no target constraint.
-- Kubernetes API access was sometimes modeled as plain `NetworkPolicy` egress on `443` or `6443`, which is unreliable with Cilium kube-proxy replacement and too broad from a zero-trust perspective.
-- DNS was handled per namespace, but not as a reusable baseline.
-- Namespace naming and structure were inconsistent. There were typo-prone directories such as `dasboard`, `clouadfare`, and `postgress`.
-- There was no Argo CD layout for safe GitOps promotion, pruning, or self-healing.
+The previous repository was closer to a demo than a safe production baseline. The main issues were:
 
-## What Improved
+- Missing explicit `metadata.namespace` in most policy manifests. The repo relied on Kustomize namespace injection, which makes raw YAML review harder and increases the chance of applying a policy into the wrong namespace during manual operations.
+- Default deny existed, but the shared baseline did not include a controlled intra-namespace policy or a reusable kube-apiserver policy. This makes adoption harder and encourages teams to add one-off exceptions.
+- `gaz` had ingress-only rules for several services but no matching egress from the caller. With a namespace default deny, that silently breaks east-west calls.
+- `gaz` and `monitoring` used some destination selectors that were too broad or incomplete. Example: Prometheus egress to the whole `monitoring` namespace on multiple ports is wider than least privilege.
+- DNS allow existed, but it matched only `k8s-app: kube-dns`. Many clusters use CoreDNS labels or both label sets during migrations.
+- kube-apiserver access existed in two forms: a reusable module and app-specific copies. The repo did not clearly distinguish when API access should be namespace-wide versus workload-specific.
+- Argo CD was configured with `automated.prune: true` from the start. That is unsafe for first-time GitOps adoption because any drift or missing manifest in Git can delete live policies immediately.
+- The repository structure mixed reusable and app-specific policy concerns and used `policies.yaml` names inconsistently, which makes large-scale GitOps promotion harder to reason about.
 
-- Policies are now split into reusable shared baselines and app-specific modules.
-- Shared controls are Cilium-aware:
-  - `default-deny`
-  - DNS allow with DNS L7 inspection
-- App policies demonstrate zero-trust controls with:
-  - explicit ingress sources
-  - explicit egress destinations
-  - selective HTTP L7 method/path restrictions only on sensitive edges
-  - FQDN-based egress for external APIs
-- kube-apiserver access is no longer global. It is opt-in through a reusable module, and the provided app examples use workload-specific API rules instead of namespace-wide API access.
-- Hot paths use identity-based L3/L4 rules where possible to reduce proxy overhead under load.
-- Environment overlays use Kustomize so Argo CD can deploy each namespace independently.
-- Argo CD includes both a single `Application` example and an `ApplicationSet` for fleet rollout with automated sync, prune, self-heal, `PruneLast`, and `ServerSideApply`.
-
-## Repository Layout
+## Target Layout
 
 ```text
 .
@@ -38,18 +26,16 @@ Production-ready GitOps repository for Kubernetes network policies on clusters r
     ├── apps
     │   ├── gaz
     │   │   ├── kustomization.yaml
-    │   │   └── policies.yaml
+    │   │   └── policy.yaml
     │   └── monitoring
     │       ├── kustomization.yaml
-    │       └── policies.yaml
+    │       └── policy.yaml
     ├── base
     │   ├── allow-dns.yaml
+    │   ├── allow-internal-namespace.yaml
+    │   ├── allow-kube-api.yaml
     │   ├── deny-all.yaml
     │   └── kustomization.yaml
-    ├── common
-    │   └── kube-api
-    │       ├── allow-kube-api.yaml
-    │       └── kustomization.yaml
     └── envs
         ├── dev
         │   ├── gaz
@@ -63,115 +49,70 @@ Production-ready GitOps repository for Kubernetes network policies on clusters r
                 └── kustomization.yaml
 ```
 
-## Core YAML Examples
+## Baseline Policy Model
 
-### Shared Baseline: `deny-all`
+- `deny-all.yaml`
+  Zero-trust baseline. Nothing talks until explicitly allowed.
+- `allow-dns.yaml`
+  Shared DNS egress to CoreDNS or kube-dns on TCP/UDP 53.
+- `allow-kube-api.yaml`
+  Reusable Cilium policy for workloads that must call the Kubernetes API. Keep this opt-in unless a namespace is controller-heavy.
+- `allow-internal-namespace.yaml`
+  Optional namespaced east-west allow for legacy or tightly-coupled workloads. Do not enable it by default for sensitive apps.
 
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: default-deny
-spec:
-  podSelector: {}
-  policyTypes:
-    - Ingress
-    - Egress
-```
+## App Policy Model
 
-### Shared Baseline: `allow-dns`
+- `apps/gaz/policy.yaml`
+  Demonstrates zero-trust app isolation with explicit gateway ingress, explicit service-to-service egress, database-only access for the calculator, and partner API egress restricted by DNS name and port.
+- `apps/monitoring/policy.yaml`
+  Demonstrates platform namespace controls with ingress to Grafana only from the ingress path, Grafana to Loki on L7 HTTP, and explicit kube-apiserver access only for Prometheus and Alloy.
 
-```yaml
-apiVersion: cilium.io/v2
-kind: CiliumNetworkPolicy
-metadata:
-  name: allow-dns
-spec:
-  endpointSelector: {}
-  egress:
-    - toEndpoints:
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: kube-system
-            k8s:k8s-app: kube-dns
-      toPorts:
-        - ports:
-            - port: "53"
-              protocol: UDP
-            - port: "53"
-              protocol: TCP
-          rules:
-            dns:
-              - matchPattern: "*"
-```
+## Argo CD Adoption
 
-### Optional Shared Module: `allow-kube-api`
+The bootstrap `Application` and the fleet `ApplicationSet` intentionally use:
 
-```yaml
-apiVersion: cilium.io/v2
-kind: CiliumNetworkPolicy
-metadata:
-  name: allow-kube-api
-spec:
-  endpointSelector:
-    matchExpressions:
-      - key: io.kubernetes.pod.namespace
-        operator: Exists
-  egress:
-    - toEntities:
-        - kube-apiserver
-      toPorts:
-        - ports:
-            - port: "443"
-              protocol: TCP
-            - port: "6443"
-              protocol: TCP
-```
+- `automated.selfHeal: true`
+- `automated.prune: false`
 
-### App Example: `gaz`
+Use `prune: false` for the initial GitOps adoption phase. Enable `prune: true` only after:
 
-The `gaz` app module demonstrates:
+1. all live policies are exported and committed to Git,
+2. every Argo app is `Synced` and `Healthy`,
+3. you have validated that no unmanaged emergency policy is still required,
+4. you have a rollback path for each namespace.
 
-- ingress only from the Cilium ingress path
-- service-account-based microservice identity
-- L7 only on north-south and sensitive billing edges
-- L4-only rules on hot east-west paths for lower proxy cost
-- FQDN-based egress for external partners
-- explicit database access
+## Safe Migration Sequence
 
-See [network-policies/apps/gaz/policies.yaml](/home/cosmin/k8s-network-policies/network-policies/apps/gaz/policies.yaml:1).
+1. Export live policies from each namespace:
 
-## Argo CD Deployment
+   ```bash
+   kubectl get networkpolicy,ciliumnetworkpolicy -A -o yaml > existing-network-policies.yaml
+   ```
 
-1. Install Cilium policy CRDs and Argo CD in the cluster.
-2. Apply the bootstrap application:
+2. Compare live state with Git and normalize names, labels, and namespaces before enabling Argo CD ownership.
 
-```bash
-kubectl apply -f argocd/application.yaml
-```
+3. Render each overlay locally and review:
 
-3. Apply the fleet `ApplicationSet`:
+   ```bash
+   kubectl kustomize network-policies/envs/dev/gaz
+   kubectl kustomize network-policies/envs/dev/monitoring
+   ```
 
-```bash
-kubectl apply -f argocd/applicationset.yaml
-```
+4. Apply the bootstrap Argo `Application`.
 
-4. Argo CD will create one child application per environment/namespace overlay from `network-policies/envs/*/*`.
-5. Validate rendered manifests before promotion:
+5. Let Argo sync with `prune: false`, then verify:
+   - DNS resolution works from restricted pods
+   - app-to-app traffic works only on intended paths and ports
+   - metrics and dashboards still function
+   - no unexpected denied flows appear in Hubble
+
+6. After a clean burn-in period, switch Argo CD apps to `prune: true` and remove orphaned manual policies.
+
+## Validation Commands
 
 ```bash
 kubectl kustomize network-policies/envs/dev/gaz
-kubectl kustomize network-policies/envs/prod/monitoring
+kubectl kustomize network-policies/envs/dev/monitoring
+kubectl get ciliumnetworkpolicies,networkpolicies -A
+hubble observe --verdict DROPPED --last 50
 ```
-
-## Operational Notes
-
-- `allow-kube-api` is opt-in. Include `network-policies/common/kube-api` only for namespaces that actually need Kubernetes API access, such as observability, GitOps controllers, operators, or service meshes.
-- Intra-namespace east-west traffic is intentionally not globally allowed. Add a dedicated app policy only where required.
-- External FQDN rules in app policies should be reviewed per environment before production rollout.
-- For 10k-user scale, prefer this policy pattern:
-  - baseline deny everywhere
-  - DNS globally per namespace
-  - kube API only for controllers
-  - L7 on ingress and high-risk APIs
-  - L3/L4 plus workload identity on high-throughput service-to-service paths
-- Ensure workloads use stable labels and dedicated service accounts, otherwise the identity-based rules in the app modules will not match.

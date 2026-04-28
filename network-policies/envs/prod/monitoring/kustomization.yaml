@@ -10,5 +10,6 @@ resources:
 labels:
   - pairs:
       app.kubernetes.io/managed-by: argocd
+      app.kubernetes.io/instance: monitoring-prod
       env: prod
       policy-tier: platform

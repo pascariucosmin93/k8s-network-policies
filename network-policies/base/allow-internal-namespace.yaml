@@ -1,9 +1,9 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: deny-all
+  name: allow-internal-namespace
   labels:
-    app.kubernetes.io/name: deny-all
+    app.kubernetes.io/name: allow-internal-namespace
     app.kubernetes.io/part-of: network-policies
     app.kubernetes.io/component: baseline
 spec:
@@ -11,3 +11,9 @@ spec:
   policyTypes:
     - Ingress
     - Egress
+  ingress:
+    - from:
+        - podSelector: {}
+  egress:
+    - to:
+        - podSelector: {}

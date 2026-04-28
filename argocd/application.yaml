@@ -4,6 +4,7 @@ metadata:
   name: network-policies-dev-gaz
   namespace: argocd
   labels:
+    app.kubernetes.io/name: network-policies-dev-gaz
     app.kubernetes.io/part-of: network-policies
 spec:
   project: default
@@ -16,10 +17,9 @@ spec:
     namespace: gaz
   syncPolicy:
     automated:
-      prune: true
+      prune: false
       selfHeal: true
     syncOptions:
-      - CreateNamespace=true
       - ApplyOutOfSyncOnly=true
       - PruneLast=true
       - ServerSideApply=true

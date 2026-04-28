@@ -3,8 +3,9 @@ kind: CiliumNetworkPolicy
 metadata:
   name: allow-kube-api
   labels:
+    app.kubernetes.io/name: allow-kube-api
     app.kubernetes.io/part-of: network-policies
-    app.kubernetes.io/component: kube-api
+    app.kubernetes.io/component: baseline
 spec:
   endpointSelector: {}
   egress:
