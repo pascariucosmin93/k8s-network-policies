@@ -1,0 +1,142 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: gaz-gateway-ingress
+  labels:
+    app.kubernetes.io/part-of: gaz
+    app.kubernetes.io/component: gateway
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: gaz-gateway
+      io.cilium.k8s.policy.serviceaccount: gaz-gateway
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: cilium-envoy
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+          rules:
+            http:
+              - method: "GET"
+                path: "^/healthz$"
+              - method: "GET"
+                path: "^/api/v1/quotes(/[0-9A-Za-z_-]+)?$"
+              - method: "POST"
+                path: "^/api/v1/calculate$"
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: gaz-calculator-ingress
+  labels:
+    app.kubernetes.io/part-of: gaz
+    app.kubernetes.io/component: calculator
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: calculator
+      io.cilium.k8s.policy.serviceaccount: calculator
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: gaz
+            k8s:io.cilium.k8s.policy.serviceaccount: gaz-gateway
+      toPorts:
+        - ports:
+            - port: "3000"
+              protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: gaz-billing-ingress
+  labels:
+    app.kubernetes.io/part-of: gaz
+    app.kubernetes.io/component: billing
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: billing-service
+      io.cilium.k8s.policy.serviceaccount: billing-service
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: gaz
+            k8s:io.cilium.k8s.policy.serviceaccount: gaz-gateway
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+          rules:
+            http:
+              - method: "POST"
+                path: "^/api/v1/invoices$"
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: gaz-billing-external-egress
+  labels:
+    app.kubernetes.io/part-of: gaz
+    app.kubernetes.io/component: billing
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: billing-service
+      io.cilium.k8s.policy.serviceaccount: billing-service
+  egress:
+    - toFQDNs:
+        - matchName: api.partner.example.com
+        - matchName: oauth.partner.example.com
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: gaz-reporting-ingress
+  labels:
+    app.kubernetes.io/part-of: gaz
+    app.kubernetes.io/component: reporting
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: reporting-service
+      io.cilium.k8s.policy.serviceaccount: reporting-service
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: gaz
+            k8s:io.cilium.k8s.policy.serviceaccount: gaz-gateway
+      toPorts:
+        - ports:
+            - port: "8081"
+              protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: gaz-calculator-egress
+  labels:
+    app.kubernetes.io/part-of: gaz
+    app.kubernetes.io/component: calculator
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: calculator
+      io.cilium.k8s.policy.serviceaccount: calculator
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: postgres
+            k8s:app.kubernetes.io/name: gaz-postgres
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP

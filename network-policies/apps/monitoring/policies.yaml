@@ -1,0 +1,127 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: grafana-ingress
+  labels:
+    app.kubernetes.io/part-of: monitoring
+    app.kubernetes.io/component: grafana
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: grafana
+      io.cilium.k8s.policy.serviceaccount: grafana
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: cilium-envoy
+      toPorts:
+        - ports:
+            - port: "3000"
+              protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: grafana-loki-egress
+  labels:
+    app.kubernetes.io/part-of: monitoring
+    app.kubernetes.io/component: grafana
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: grafana
+      io.cilium.k8s.policy.serviceaccount: grafana
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+            k8s:app.kubernetes.io/name: loki
+      toPorts:
+        - ports:
+            - port: "3100"
+              protocol: TCP
+          rules:
+            http:
+              - method: "GET"
+                path: "^/ready$"
+              - method: "GET"
+                path: "^/loki/api/v1/query(_range)?$"
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: prometheus-scrape-egress
+  labels:
+    app.kubernetes.io/part-of: monitoring
+    app.kubernetes.io/component: prometheus
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus
+      io.cilium.k8s.policy.serviceaccount: prometheus
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: monitoring
+      toPorts:
+        - ports:
+            - port: "9090"
+              protocol: TCP
+            - port: "9093"
+              protocol: TCP
+            - port: "3100"
+              protocol: TCP
+    - toEntities:
+        - host
+        - remote-node
+      toPorts:
+        - ports:
+            - port: "9100"
+              protocol: TCP
+            - port: "10250"
+              protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: prometheus-kube-api-egress
+  labels:
+    app.kubernetes.io/part-of: monitoring
+    app.kubernetes.io/component: prometheus
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: prometheus
+      io.cilium.k8s.policy.serviceaccount: prometheus
+  egress:
+    - toEntities:
+        - kube-apiserver
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+            - port: "6443"
+              protocol: TCP
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: alloy-kube-api-egress
+  labels:
+    app.kubernetes.io/part-of: monitoring
+    app.kubernetes.io/component: alloy
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: alloy
+      io.cilium.k8s.policy.serviceaccount: alloy
+  egress:
+    - toEntities:
+        - kube-apiserver
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+            - port: "6443"
+              protocol: TCP
