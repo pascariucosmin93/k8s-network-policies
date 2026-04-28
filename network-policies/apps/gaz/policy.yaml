@@ -2,6 +2,7 @@ apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
   name: gaz-gateway-ingress
+  namespace: gaz
   labels:
     app.kubernetes.io/name: gaz-gateway-ingress
     app.kubernetes.io/part-of: network-policies
@@ -36,6 +37,7 @@ apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
   name: gaz-gateway-egress
+  namespace: gaz
   labels:
     app.kubernetes.io/name: gaz-gateway-egress
     app.kubernetes.io/part-of: network-policies
@@ -80,6 +82,7 @@ apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
   name: gaz-calculator-ingress
+  namespace: gaz
   labels:
     app.kubernetes.io/name: gaz-calculator-ingress
     app.kubernetes.io/part-of: network-policies
@@ -104,6 +107,7 @@ apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
   name: gaz-calculator-egress
+  namespace: gaz
   labels:
     app.kubernetes.io/name: gaz-calculator-egress
     app.kubernetes.io/part-of: network-policies
@@ -128,6 +132,7 @@ apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
   name: gaz-billing-ingress
+  namespace: gaz
   labels:
     app.kubernetes.io/name: gaz-billing-ingress
     app.kubernetes.io/part-of: network-policies
@@ -156,6 +161,7 @@ apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
   name: gaz-billing-external-egress
+  namespace: gaz
   labels:
     app.kubernetes.io/name: gaz-billing-external-egress
     app.kubernetes.io/part-of: network-policies
@@ -217,6 +223,7 @@ apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
   name: gaz-reporting-ingress
+  namespace: gaz
   labels:
     app.kubernetes.io/name: gaz-reporting-ingress
     app.kubernetes.io/part-of: network-policies
